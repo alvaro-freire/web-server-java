@@ -29,19 +29,19 @@ public class MonoThreadTcpServer {
 
                 // Set the input channel
                 InputStream input = socket.getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(input));
 
                 // Set the output channel
                 OutputStream output = socket.getOutputStream();
+                PrintWriter writer = new PrintWriter(output, true);
 
                 // Receive the client message
-                BufferedReader reader = new BufferedReader(new InputStreamReader(input));
                 String message = reader.readLine();
                 System.out.println("SERVER: Received " + message
                         + " from " + socket.getInetAddress().toString()
                         + ":" + socket.getPort());
 
                 // Send response to the client
-                PrintWriter writer = new PrintWriter(output, true);
                 writer.println(message);
                 System.out.println("SERVER: Sending " + message +
                         " to " + socket.getInetAddress().toString() +
