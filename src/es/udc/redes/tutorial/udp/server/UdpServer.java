@@ -16,10 +16,8 @@ public class UdpServer {
         }
 
         DatagramSocket socket = null;
-        DatagramPacket request;
-        DatagramPacket response;
-
         byte[] buf = new byte[256];
+
 
         try {
             // Create a server socket
@@ -27,9 +25,10 @@ public class UdpServer {
 
             // Set maximum timeout to 300 secs
             socket.setSoTimeout(300000);
+
             while (true) {
                 // Prepare datagram for reception
-                request = new DatagramPacket(buf, buf.length);
+                DatagramPacket request = new DatagramPacket(buf, buf.length);
 
                 // Receive the message
                 socket.receive(request);
@@ -45,9 +44,8 @@ public class UdpServer {
                 String data = new String(request.getData());
                 buf = data.getBytes();
 
-
                 // Send response
-                response = new DatagramPacket(buf, buf.length, clientAddress, clientPort);
+                DatagramPacket response = new DatagramPacket(buf, buf.length, clientAddress, clientPort);
                 socket.send(response);
 
                 System.out.println("SERVER: Sending "
