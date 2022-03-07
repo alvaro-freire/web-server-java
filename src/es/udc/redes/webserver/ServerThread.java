@@ -4,6 +4,10 @@ import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
 
 public class ServerThread extends Thread {
@@ -15,22 +19,73 @@ public class ServerThread extends Thread {
         this.socket = s;
     }
 
-    public void headRequest(String request, PrintWriter writer){
+    String getServerTime() {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return dateFormat.format(calendar.getTime()) + "\n";
+    }
+
+    String getLastModified(File file) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return dateFormat.format(file.lastModified()) + "\n";
+    }
+
+    public String statusCode404() {
+        return "HTTP/1.0 404 Not Found\n";
+    }
+
+    public String findResource(String dir, String resource) {
+        File path = new File(dir);
+
+        File[] list = path.listFiles();
+
+        if (list != null) {
+            for (File file : list) {
+                if (resource.equalsIgnoreCase("/" + file.getName())) {
+                    return file.getName();
+                }
+                if (resource.equalsIgnoreCase(file.getName())) {
+                    return file.getName();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public void headRequest(String request, PrintWriter writer) {
 
     }
 
     public void getRequest(String request, PrintWriter writer) {
         String[] msgArray = request.split(" ");
-        String path = msgArray[1];
-        String httpVersion = msgArray[2];
+        String directory = "/mnt/z/GEI UDC/Q4/Redes/PRACTICAS/java-labs-alvaro-freire/p1-files/";
+        String resource = msgArray[1];
+        String date = getServerTime();
+
+        String file = findResource(directory, resource);
+
+        if (file == null) {
+            writer.println(statusCode404());
+            return;
+        }
+
+        String requestLine = "HTTP/1.0 200 OK\n"; // CAMBIAR NOMBRE - no requestLine
+        String path = directory + file;
+
+        String lastModified = getLastModified(new File(path));
+
 
         try {
             String contenido = new String(Files.readAllBytes(Paths.get
-                    ("/mnt/z/GEI UDC/Q4/Redes/PRACTICAS/java-labs-alvaro-freire/p1-files/index.html")));
-            writer.println(httpVersion + " 200 OK\n" +
-                    "Date: Sat, 1 Jan 2000 12:00:15 GMT\n" +
+                    (path)));
+            writer.println(requestLine + date +
                     "Server: Apache/1.3.0 (Unix)\n" +
-                    "Last-Modified: Fri, 24 Dic 1999 13:03:32 GMT\n" +
+                    lastModified +
                     "Content-Length: 6821\n" +
                     "Content-Type: text/html\n\n" +
                     contenido);
@@ -46,14 +101,9 @@ public class ServerThread extends Thread {
         String httpVersion = msgArray[2];
 
         switch (command) {
-            case "GET":
-                getRequest(request, writer);
-                break;
-            case "HEAD":
-                headRequest(request, writer);
-                break;
-            default:
-                System.out.println("Nothing");
+            case "GET" -> getRequest(request, writer);
+            case "HEAD" -> headRequest(request, writer);
+            default -> System.out.println("Nothing");
         }
     }
 
@@ -79,7 +129,7 @@ public class ServerThread extends Thread {
             input.close();
             output.close();
         } catch (SocketTimeoutException e) {
-           System.err.println("Nothing received in 300 secs");
+            System.err.println("Nothing received in 300 secs");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         } finally {
