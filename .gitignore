@@ -10,6 +10,7 @@ target/
 .idea/
 /out/
 *.iml
+*.class
 
 # Netbeans configuration.
 /nbproject/private/
