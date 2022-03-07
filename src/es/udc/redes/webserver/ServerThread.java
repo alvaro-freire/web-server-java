@@ -2,6 +2,8 @@ package es.udc.redes.webserver;
 
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 
 public class ServerThread extends Thread {
@@ -22,25 +24,19 @@ public class ServerThread extends Thread {
         String path = msgArray[1];
         String httpVersion = msgArray[2];
 
-        File file = new File("/mnt/z/GEI UDC/Q4/Redes/PRACTICAS/java-labs-alvaro-freire/p1-files/index.html");
-
-        writer.println("HTTP/1.1 200 OK\n" +
-                "Date: Sat, 1 Jan 2000 12:00:15 GMT\n" +
-                "Server: Apache/1.3.0 (Unix)\n" +
-                "Last-Modified: Fri, 24 Dic 1999 13:03:32 GMT\n" +
-                "Content-Length: 6821\n" +
-                "Content-Type: text/html\n\n" +
-                "<html>\n" +
-                "   <head>\n" +
-                "      <title>\n" +
-                "         A Simple HTML Document\n" +
-                "      </title>\n" +
-                "   </head>\n" +
-                "   <body>\n" +
-                "      <p>This is a very simple HTML document</p>\n" +
-                "      <p>It only has two paragraphs</p>\n" +
-                "   </body>\n" +
-                "</html>");
+        try {
+            String contenido = new String(Files.readAllBytes(Paths.get
+                    ("/mnt/z/GEI UDC/Q4/Redes/PRACTICAS/java-labs-alvaro-freire/p1-files/index.html")));
+            writer.println(httpVersion + " 200 OK\n" +
+                    "Date: Sat, 1 Jan 2000 12:00:15 GMT\n" +
+                    "Server: Apache/1.3.0 (Unix)\n" +
+                    "Last-Modified: Fri, 24 Dic 1999 13:03:32 GMT\n" +
+                    "Content-Length: 6821\n" +
+                    "Content-Type: text/html\n\n" +
+                    contenido);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void processRequest(String request, PrintWriter writer) {
@@ -56,6 +52,8 @@ public class ServerThread extends Thread {
             case "HEAD":
                 headRequest(request, writer);
                 break;
+            default:
+                System.out.println("Nothing");
         }
     }
 
