@@ -74,17 +74,17 @@ public class ServerThread extends Thread {
             return;
         }
 
-        String requestLine = "HTTP/1.0 200 OK\n"; // CAMBIAR NOMBRE - no requestLine
+        String statusLine = "HTTP/1.0 200 OK\n";
         String path = directory + file;
-
         String lastModified = getLastModified(new File(path));
-
+        // String contentLength = ;
+        // String contentType = ;
 
         try {
             String contenido = new String(Files.readAllBytes(Paths.get
                     (path)));
-            writer.println(requestLine + date +
-                    "Server: Apache/1.3.0 (Unix)\n" +
+            writer.println(statusLine + date +
+                    "Server: Hamburguer/1.0 (Unix)\n" +
                     lastModified +
                     "Content-Length: 6821\n" +
                     "Content-Type: text/html\n\n" +
@@ -96,14 +96,14 @@ public class ServerThread extends Thread {
 
     public void processRequest(String request, PrintWriter writer) {
         String[] msgArray = request.split(" ");
-        String command = msgArray[0];
+        String method = msgArray[0];
         String path = msgArray[1];
         String httpVersion = msgArray[2];
 
-        switch (command) {
+        switch (method) {
             case "GET" -> getRequest(request, writer);
             case "HEAD" -> headRequest(request, writer);
-            default -> System.out.println("Nothing");
+            default -> writer.println("501 Not Implemented\n");
         }
     }
 
