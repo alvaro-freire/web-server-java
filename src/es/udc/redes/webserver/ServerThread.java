@@ -34,6 +34,14 @@ public class ServerThread extends Thread {
         return dateFormat.format(file.lastModified()) + "\n";
     }
 
+    String getContentLength(String path) throws IOException {
+        return "Content-Length: " + Files.size(Paths.get(path)) + "\n";
+    }
+
+    String getContentType(String path) throws IOException {
+        return "Content-Type: " + Files.probeContentType(Paths.get(path)) + "\n\n";
+    }
+
     public String statusCode404() {
         return "HTTP/1.0 404 Not Found\n";
     }
@@ -57,15 +65,20 @@ public class ServerThread extends Thread {
         return null;
     }
 
+    public String buildHeaders(String path) throws IOException {
+        return "HTTP/1.0 200 OK\n" + getServerTime() + "Server: Hamburguer/1.0 (Unix)\n" +
+                getLastModified(new File(path)) + getContentLength(path) +
+                getContentType(path) + new String(Files.readAllBytes(Paths.get(path)));
+    }
+
     public void headRequest(String request, PrintWriter writer) {
 
     }
 
-    public void getRequest(String request, PrintWriter writer) {
+    public void getRequest(String request, PrintWriter writer) throws IOException {
         String[] msgArray = request.split(" ");
-        String directory = "/mnt/z/GEI UDC/Q4/Redes/PRACTICAS/java-labs-alvaro-freire/p1-files/";
+        String directory = "../p1-files/";
         String resource = msgArray[1];
-        String date = getServerTime();
 
         String file = findResource(directory, resource);
 
@@ -74,27 +87,11 @@ public class ServerThread extends Thread {
             return;
         }
 
-        String statusLine = "HTTP/1.0 200 OK\n";
-        String path = directory + file;
-        String lastModified = getLastModified(new File(path));
-        // String contentLength = ;
-        // String contentType = ;
+        writer.println(buildHeaders(directory + file));
 
-        try {
-            String contenido = new String(Files.readAllBytes(Paths.get
-                    (path)));
-            writer.println(statusLine + date +
-                    "Server: Hamburguer/1.0 (Unix)\n" +
-                    lastModified +
-                    "Content-Length: 6821\n" +
-                    "Content-Type: text/html\n\n" +
-                    contenido);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
-    public void processRequest(String request, PrintWriter writer) {
+    public void processRequest(String request, PrintWriter writer) throws IOException {
         String[] msgArray = request.split(" ");
         String method = msgArray[0];
         String path = msgArray[1];
