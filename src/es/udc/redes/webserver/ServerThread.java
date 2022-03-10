@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.TimeZone;
 
 
@@ -66,7 +67,7 @@ public class ServerThread extends Thread {
     }
 
     public String buildHeaders(String path) throws IOException {
-        return "HTTP/1.0 200 OK\n" + getServerTime() + "Server: Hamburguer/1.0 (Unix)\n" +
+        return "HTTP/1.0 200 OK\n" + getServerTime() + "Server: Web_Server268\n" +
                 getLastModified(new File(path)) + getContentLength(path) +
                 getContentType(path) + new String(Files.readAllBytes(Paths.get(path)));
     }
@@ -118,9 +119,13 @@ public class ServerThread extends Thread {
             PrintWriter writer = new PrintWriter(output, true);
 
             // Receive the message from the client
-            String message = reader.readLine();
+            StringBuilder request = new StringBuilder();
+            String s;
+            while ((s = reader.readLine()) != null && !s.equals("")) {
+                request.append(s);
+            }
 
-            processRequest(message, writer);
+            processRequest(request.toString(), writer);
 
             // Close the streams
             input.close();
