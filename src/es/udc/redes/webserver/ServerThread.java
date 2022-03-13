@@ -15,6 +15,9 @@ public class ServerThread extends Thread {
 
     private Socket socket;
 
+    public String error400 = "../p1-files/error400.html";
+    public String error404 = "../p1-files/error404.html";
+
     public ServerThread(Socket s) {
         // Store the socket s
         this.socket = s;
@@ -43,10 +46,6 @@ public class ServerThread extends Thread {
         return "Content-Type: " + Files.probeContentType(Paths.get(path)) + "\n\n";
     }
 
-    public String statusCode404() {
-        return "HTTP/1.0 404 Not Found\n";
-    }
-
     public String findResource(String dir, String resource) {
         File path = new File(dir);
 
@@ -66,8 +65,16 @@ public class ServerThread extends Thread {
         return null;
     }
 
-    public String buildHeaders(String path) throws IOException {
-        return "HTTP/1.0 200 OK\n" + getServerTime() + "Server: Web_Server268\n" +
+    public String buildHeaders(String dir, String resource) throws IOException {
+        String path = dir + resource;
+
+        if (findResource(dir, resource) == null) {
+            return "HTTP/1.0 404 Not Found\n" + "Date: " + getServerTime() + "Server: Web_Server268\n" +
+                    getLastModified(new File(error404)) + getContentLength(error404) +
+                    getContentType(error404);
+        }
+
+        return "HTTP/1.0 200 OK\n" + "Date: " + getServerTime() + "Server: Web_Server268\n" +
                 getLastModified(new File(path)) + getContentLength(path) +
                 getContentType(path);
     }
@@ -75,18 +82,17 @@ public class ServerThread extends Thread {
     public void getAndHead(String[] request, PrintWriter writer) throws IOException {
         String[] requestLine = request[0].split(" ");
         String directory = "../p1-files/";
-        String method = requestLine[0];      // GET or HEAD
+        String method = requestLine[0]; // GET or HEAD
         String resource = requestLine[1];
 
         String file = findResource(directory, resource);
 
+        writer.println(buildHeaders(directory, resource));
+
         if (file == null) {
-            writer.println(statusCode404());
+            writer.println(new String(Files.readAllBytes(Paths.get(error404))));
             return;
         }
-
-        writer.println(buildHeaders(directory + file));
-
         if (Objects.equals(method, "GET")) {
             writer.println(new String(Files.readAllBytes(Paths.get(directory + file))));
         }
@@ -99,7 +105,7 @@ public class ServerThread extends Thread {
 
         switch (method) {
             case "GET", "HEAD" -> getAndHead(requestArray, writer);
-            default -> writer.println("501 Not Implemented\n");
+            default -> writer.println(new String(Files.readAllBytes(Paths.get(error400))));
         }
     }
 
