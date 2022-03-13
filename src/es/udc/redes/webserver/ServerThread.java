@@ -20,7 +20,7 @@ public class ServerThread extends Thread {
         this.socket = s;
     }
 
-    String getServerTime() {
+    public String getServerTime() {
         Calendar calendar = Calendar.getInstance();
         SimpleDateFormat dateFormat = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
@@ -28,18 +28,18 @@ public class ServerThread extends Thread {
         return dateFormat.format(calendar.getTime()) + "\n";
     }
 
-    String getLastModified(File file) {
+    public String getLastModified(File file) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(file.lastModified()) + "\n";
     }
 
-    String getContentLength(String path) throws IOException {
+    public String getContentLength(String path) throws IOException {
         return "Content-Length: " + Files.size(Paths.get(path)) + "\n";
     }
 
-    String getContentType(String path) throws IOException {
+    public String getContentType(String path) throws IOException {
         return "Content-Type: " + Files.probeContentType(Paths.get(path)) + "\n\n";
     }
 
@@ -69,17 +69,14 @@ public class ServerThread extends Thread {
     public String buildHeaders(String path) throws IOException {
         return "HTTP/1.0 200 OK\n" + getServerTime() + "Server: Web_Server268\n" +
                 getLastModified(new File(path)) + getContentLength(path) +
-                getContentType(path) + new String(Files.readAllBytes(Paths.get(path)));
+                getContentType(path);
     }
 
-    public void headRequest(String request, PrintWriter writer) {
-
-    }
-
-    public void getRequest(String request, PrintWriter writer) throws IOException {
-        String[] msgArray = request.split(" ");
+    public void getAndHead(String[] request, PrintWriter writer) throws IOException {
+        String[] requestLine = request[0].split(" ");
         String directory = "../p1-files/";
-        String resource = msgArray[1];
+        String method = requestLine[0];      // GET or HEAD
+        String resource = requestLine[1];
 
         String file = findResource(directory, resource);
 
@@ -90,19 +87,18 @@ public class ServerThread extends Thread {
 
         writer.println(buildHeaders(directory + file));
 
+        if (Objects.equals(method, "GET")) {
+            writer.println(new String(Files.readAllBytes(Paths.get(directory + file))));
+        }
     }
 
     public void processRequest(String request, PrintWriter writer) throws IOException {
         String[] requestArray = request.split("\n");
         String[] requestLine = requestArray[0].split(" ");
-
         String method = requestLine[0];      // GET or HEAD
-        String path = requestLine[1];        // index.html
-        String httpVersion = requestLine[2]; // HTTP/1.0
 
         switch (method) {
-            case "GET" -> getRequest(request, writer);
-            case "HEAD" -> headRequest(request, writer);
+            case "GET", "HEAD" -> getAndHead(requestArray, writer);
             default -> writer.println("501 Not Implemented\n");
         }
     }
