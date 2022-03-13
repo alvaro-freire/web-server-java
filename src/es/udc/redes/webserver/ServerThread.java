@@ -93,10 +93,12 @@ public class ServerThread extends Thread {
     }
 
     public void processRequest(String request, PrintWriter writer) throws IOException {
-        String[] msgArray = request.split(" ");
-        String method = msgArray[0];
-        String path = msgArray[1];
-        String httpVersion = msgArray[2];
+        String[] requestArray = request.split("\n");
+        String[] requestLine = requestArray[0].split(" ");
+
+        String method = requestLine[0];      // GET or HEAD
+        String path = requestLine[1];        // index.html
+        String httpVersion = requestLine[2]; // HTTP/1.0
 
         switch (method) {
             case "GET" -> getRequest(request, writer);
@@ -122,7 +124,7 @@ public class ServerThread extends Thread {
             StringBuilder request = new StringBuilder();
             String s;
             while ((s = reader.readLine()) != null && !s.equals("")) {
-                request.append(s);
+                request.append(s).append("\n");
             }
 
             processRequest(request.toString(), writer);
