@@ -91,31 +91,25 @@ public class ServerThread extends Thread {
         }
     }
 
-    public void badRequest(OutputStream writer, boolean get) throws IOException {
-        String file = "p1-files" + File.separator + "error400.html";
+    public void error(OutputStream writer, boolean get, int statusCode) throws IOException {
+        String file = "error" + statusCode + ".html";
+        String statusLine;
 
-        String header = "HTTP/1.0 400 Bad Request\n" + getServerTime() + "Server: Web_Server268\n"
-                + "Content-Type: text/html\n" + getContentLength(file) + "Connection: close\n\n";
-
-        String html = "";
-
-        if (get) {
-            html = new String(Files.readAllBytes(Paths.get(file)));
+        if (statusCode == 400) {
+            statusLine = "HTTP/1.0 400 Bad Request\n";
+        } else {
+            statusLine = "HTTP/1.0 404 Not Found\n";
         }
 
-        writer.write((header + html).getBytes());
-    }
+        String path = "p1-files" + File.separator + file;
 
-    public void notFound(OutputStream writer, boolean get) throws IOException {
-        String file = "p1-files" + File.separator + "error404.html";
-
-        String header = "HTTP/1.0 404 Not Found\n" + getServerTime() + "Server: Web_Server268\n"
-                + "Content-Type: text/html\n" + getContentLength(file) + "Connection: close\n\n";
+        String header = statusLine + getServerTime() + "Server: Web_Server268\n"
+                + "Content-Type: text/html\n" + getContentLength(path) + "Connection: close\n\n";
 
         String html = "";
 
         if (get) {
-            html = new String(Files.readAllBytes(Paths.get(file)));
+            html = new String(Files.readAllBytes(Paths.get(path)));
         }
 
         writer.write((header + html).getBytes());
@@ -127,7 +121,7 @@ public class ServerThread extends Thread {
         String directory = "p1-files" + File.separator;
 
         if (requestLine.length != 3) {
-            badRequest(writer, true);
+            error(writer, true, 400);
             return;
         }
 
@@ -140,26 +134,21 @@ public class ServerThread extends Thread {
         String file = findResource(directory, path);
 
         if (!Objects.equals(httpVersion, "HTTP/1.0") && !Objects.equals(httpVersion, "HTTP/1.1")) {
-            badRequest(writer, true);
+            error(writer, method.equals("GET"), 400);
         }
 
         switch (method) {
-            case "GET" -> {
+            case "GET", "HEAD" -> {
                 if (file == null) {
-                    notFound(writer, true);
+                    error(writer, method.equals("GET"), 404);
                     return;
                 }
                 writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
-                writer.write(Files.readAllBytes(Paths.get(directory + file)));
-            }
-            case "HEAD" -> {
-                if (file == null) {
-                    notFound(writer, false);
-                    return;
+                if (method.equals("GET")) {
+                    writer.write(Files.readAllBytes(Paths.get(directory + file)));
                 }
-                writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
             }
-            default -> badRequest(writer, true);
+            default -> error(writer, true, 400);
         }
     }
 
