@@ -91,22 +91,12 @@ public class ServerThread extends Thread {
         }
     }
 
-    public void notImplemented(OutputStream writer) throws IOException {
-        String header = "HTTP/1.0 501 Not Implemented\n" + getServerTime() + "Server: Web_Server268\n"
-                + "Content-Type: text/html\n" + "Content-Length: 357\n" + "Connection: close\n\n";
-        String html = """
-                <?xml version="1.0" encoding="iso-8859-1"?>
-                <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-                         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-                        <head>
-                                <title>501 - Not Implemented</title>
-                        </head>
-                        <body>
-                                <h1>501 - Not Implemented</h1>
-                        </body>
-                </html>
-                """;
+    public void badRequest(OutputStream writer) throws IOException {
+        String file = "p1-files" + File.separator + "error400.html";
+
+        String header = "HTTP/1.0 400 Bad Request\n" + getServerTime() + "Server: Web_Server268\n"
+                + "Content-Type: text/html\n" + getContentLength(file) + "Connection: close\n\n";
+        String html = new String(Files.readAllBytes(Paths.get(file)));
 
         writer.write((header + html).getBytes());
     }
@@ -116,9 +106,8 @@ public class ServerThread extends Thread {
         String[] requestLine = requestArray[0].split(" ");
         String directory = "p1-files" + File.separator;
 
-        // Status Code 501 - Not Implemented
         if (requestLine.length != 3) {
-            notImplemented(writer);
+            badRequest(writer);
             return;
         }
 
@@ -144,7 +133,7 @@ public class ServerThread extends Thread {
                 }
             }
             case "HEAD" -> writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
-            default -> notImplemented(writer); // Status Code 501 - Not Implemented
+            default -> badRequest(writer); // Status Code 501 - Not Implemented
         }
     }
 
