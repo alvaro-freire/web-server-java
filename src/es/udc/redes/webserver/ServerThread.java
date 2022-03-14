@@ -32,7 +32,7 @@ public class ServerThread extends Thread {
         SimpleDateFormat dateFormat = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
         dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
-        return "Date: " + dateFormat.format(file.lastModified()) + "\n";
+        return "Last-Modified: " + dateFormat.format(file.lastModified()) + "\n";
     }
 
     public String getContentLength(String path) throws IOException {
@@ -123,6 +123,10 @@ public class ServerThread extends Thread {
         if (requestLine.length != 3) {
             error(writer, true, 400);
             return;
+        }
+
+        for (String line : requestArray) {
+
         }
 
         String method = requestLine[0];      // GET or HEAD
