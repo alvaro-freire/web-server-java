@@ -49,7 +49,7 @@ public class ServerThread extends Thread {
 
         if (list != null) {
             for (File file : list) {
-                if (resource.equalsIgnoreCase("/" + file.getName())) {
+                if (resource.equalsIgnoreCase(File.separator + file.getName())) {
                     return file.getName();
                 }
                 if (resource.equalsIgnoreCase(file.getName())) {
@@ -70,7 +70,7 @@ public class ServerThread extends Thread {
             status = "200 OK\n";
             error = false;
         } else {
-            if (Objects.equals(httpVersion, "HTTP/1.0")) {
+            if (Objects.equals(httpVersion, "HTTP/1.0") || Objects.equals(httpVersion, "HTTP/1.1")) {
                 path = dir + "error404.html";
                 status = "404 Not Found\n";
             } else {
@@ -113,7 +113,7 @@ public class ServerThread extends Thread {
     public void processRequest(String request, PrintWriter writer) throws IOException {
         String[] requestArray = request.split("\n");
         String[] requestLine = requestArray[0].split(" ");
-        String directory = "../p1-files/";
+        String directory = "p1-files" + File.separator;
 
         // Status Code 501 - Not Implemented
         if (requestLine.length != 3) {
@@ -123,6 +123,9 @@ public class ServerThread extends Thread {
 
         String method = requestLine[0];      // GET or HEAD
         String path = requestLine[1];
+        if (Objects.equals(path, "/")) {
+            path = "index.html";
+        }
         String httpVersion = requestLine[2];
         String file = findResource(directory, path);
 
