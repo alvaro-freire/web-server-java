@@ -2,6 +2,7 @@ package es.udc.redes.webserver;
 
 import java.net.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -90,7 +91,7 @@ public class ServerThread extends Thread {
         }
     }
 
-    public void notImplemented(PrintWriter writer) {
+    public void notImplemented(OutputStream writer) throws IOException {
         String header = "HTTP/1.0 501 Not Implemented\n" + getServerTime() + "Server: Web_Server268\n"
                 + "Content-Type: text/html\n" + "Content-Length: 357\n" + "Connection: close\n\n";
         String html = """
@@ -107,10 +108,10 @@ public class ServerThread extends Thread {
                 </html>
                 """;
 
-        writer.println(header + html);
+        writer.write((header + html).getBytes());
     }
 
-    public void processRequest(String request, PrintWriter writer) throws IOException {
+    public void processRequest(String request, OutputStream writer) throws IOException {
         String[] requestArray = request.split("\n");
         String[] requestLine = requestArray[0].split(" ");
         String directory = "p1-files" + File.separator;
@@ -131,18 +132,18 @@ public class ServerThread extends Thread {
 
         switch (method) {
             case "GET" -> {
-                writer.println(buildHeaders(directory, path, file, httpVersion));
+                writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
                 if (file == null) {
                     if (Objects.equals(httpVersion, "HTTP/1.0")) {
-                        writer.println(new String(Files.readAllBytes(Paths.get(directory + "error404.html"))));
+                        writer.write(Files.readAllBytes(Paths.get(directory + "error404.html")));
                     } else {
-                        writer.println(new String(Files.readAllBytes(Paths.get(directory + "error400.html"))));
+                        writer.write(Files.readAllBytes(Paths.get(directory + "error400.html")));
                     }
                 } else {
-                    writer.println(new String(Files.readAllBytes(Paths.get(directory + file))));
+                    writer.write(Files.readAllBytes(Paths.get(directory + file)));
                 }
             }
-            case "HEAD" -> writer.println(buildHeaders(directory, path, file, httpVersion));
+            case "HEAD" -> writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
             default -> notImplemented(writer); // Status Code 501 - Not Implemented
         }
     }
@@ -158,7 +159,6 @@ public class ServerThread extends Thread {
 
             // Set the output channel
             OutputStream output = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(output, true);
 
             // Receive the message from the client
             StringBuilder request = new StringBuilder();
@@ -167,7 +167,7 @@ public class ServerThread extends Thread {
                 request.append(s).append("\n");
             }
 
-            processRequest(request.toString(), writer);
+            processRequest(request.toString(), output);
 
             // Close the streams
             input.close();
