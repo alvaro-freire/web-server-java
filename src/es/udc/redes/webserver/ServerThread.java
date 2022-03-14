@@ -5,15 +5,16 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.TimeZone;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public class ServerThread extends Thread {
 
     private Socket socket;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z");
 
     public ServerThread(Socket s) {
         // Store the socket s
@@ -21,18 +22,12 @@ public class ServerThread extends Thread {
     }
 
     public String getServerTime() {
-        Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat dateFormat = new SimpleDateFormat(
-                "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
-        return "Date: " + dateFormat.format(calendar.getTime()) + "\n";
+        return "Date: " + ZonedDateTime.now(ZoneId.of("CET")).format(formatter) + "\n";
     }
 
     public String getLastModified(File file) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat(
-                "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
-        return "Last-Modified: " + dateFormat.format(file.lastModified()) + "\n";
+        ZonedDateTime date = ZonedDateTime.ofInstant(Instant.ofEpochMilli(file.lastModified()), ZoneId.systemDefault());
+        return "Last-Modified: " + date.format(formatter.withZone(ZoneId.of("CET"))) + "\n";
     }
 
     public String getContentLength(String path) throws IOException {
@@ -91,6 +86,11 @@ public class ServerThread extends Thread {
         }
     }
 
+    public void error304(OutputStream writer, String httpVersion) throws IOException {
+        String headers = httpVersion + " 304 Not Modified\n" + getServerTime() + "Server: Web_Server268\n\n";
+        writer.write(headers.getBytes());
+    }
+
     public void error(OutputStream writer, boolean get, int statusCode) throws IOException {
         String file = "error" + statusCode + ".html";
         String statusLine;
@@ -119,15 +119,26 @@ public class ServerThread extends Thread {
         String[] requestArray = request.split("\n");
         String[] requestLine = requestArray[0].split(" ");
         String directory = "p1-files" + File.separator;
+        boolean modifiedSince = false;
 
         if (requestLine.length != 3) {
             error(writer, true, 400);
             return;
         }
 
-        for (String line : requestArray) {
+        String ifModifiedSince;
+        ZonedDateTime iMSDate = null;
 
+        for (String line : requestArray) {
+            if (Objects.equals(line.split(" ", 2)[0], "If-Modified-Since:")) {
+                modifiedSince = true;
+                ifModifiedSince = line.split(" ", 2)[1];
+                iMSDate = ZonedDateTime.parse(ifModifiedSince, formatter);
+                System.out.println(iMSDate.format(formatter));
+                break;
+            }
         }
+
 
         String method = requestLine[0];      // GET or HEAD
         String path = requestLine[1];
@@ -147,9 +158,19 @@ public class ServerThread extends Thread {
                     error(writer, method.equals("GET"), 404);
                     return;
                 }
+                if (modifiedSince) {
+                    ZonedDateTime lastModifiedDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli
+                            (new File(directory + file).lastModified()), ZoneId.systemDefault());
+
+                    if (iMSDate.isAfter(lastModifiedDate)) {
+                        error304(writer, httpVersion);
+                        return;
+                    }
+                }
                 writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
                 if (method.equals("GET")) {
                     writer.write(Files.readAllBytes(Paths.get(directory + file)));
+                    writer.write("\n".getBytes());
                 }
             }
             default -> error(writer, true, 400);
