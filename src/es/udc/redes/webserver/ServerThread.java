@@ -10,13 +10,9 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 
-
 public class ServerThread extends Thread {
 
     private Socket socket;
-
-    public String error400 = "../p1-files/error400.html";
-    public String error404 = "../p1-files/error404.html";
 
     public ServerThread(Socket s) {
         // Store the socket s
@@ -27,15 +23,15 @@ public class ServerThread extends Thread {
         Calendar calendar = Calendar.getInstance();
         SimpleDateFormat dateFormat = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return dateFormat.format(calendar.getTime()) + "\n";
+        dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
+        return "Date: " + dateFormat.format(calendar.getTime()) + "\n";
     }
 
     public String getLastModified(File file) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.UK);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return dateFormat.format(file.lastModified()) + "\n";
+        dateFormat.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
+        return "Date: " + dateFormat.format(file.lastModified()) + "\n";
     }
 
     public String getContentLength(String path) throws IOException {
@@ -43,7 +39,7 @@ public class ServerThread extends Thread {
     }
 
     public String getContentType(String path) throws IOException {
-        return "Content-Type: " + Files.probeContentType(Paths.get(path)) + "\n\n";
+        return "Content-Type: " + Files.probeContentType(Paths.get(path)) + "\n";
     }
 
     public String findResource(String dir, String resource) {
@@ -65,47 +61,86 @@ public class ServerThread extends Thread {
         return null;
     }
 
-    public String buildHeaders(String dir, String resource) throws IOException {
-        String path = dir + resource;
-
-        if (findResource(dir, resource) == null) {
-            return "HTTP/1.0 404 Not Found\n" + "Date: " + getServerTime() + "Server: Web_Server268\n" +
-                    getLastModified(new File(error404)) + getContentLength(error404) +
-                    getContentType(error404);
+    public String buildHeaders(String dir, String resource, String file, String httpVersion) throws IOException {
+        String path;
+        String status;
+        boolean error;
+        if (file != null) {
+            path = dir + resource;
+            status = "200 OK\n";
+            error = false;
+        } else {
+            if (Objects.equals(httpVersion, "HTTP/1.0")) {
+                path = dir + "error404.html";
+                status = "404 Not Found\n";
+            } else {
+                path = dir + "error400.html";
+                status = "400 Bad Request\n";
+            }
+            error = true;
         }
 
-        return "HTTP/1.0 200 OK\n" + "Date: " + getServerTime() + "Server: Web_Server268\n" +
-                getLastModified(new File(path)) + getContentLength(path) +
-                getContentType(path);
+        String header = httpVersion + " " + status + getServerTime() + "Server: Web_Server268\n"
+                + getContentLength(path) + getContentType(path);
+
+        if (error) {
+            return header + "Connection: close\n\n";
+        } else {
+            return header + getLastModified(new File(path)) + "\n";
+        }
     }
 
-    public void getAndHead(String[] request, PrintWriter writer) throws IOException {
-        String[] requestLine = request[0].split(" ");
-        String directory = "../p1-files/";
-        String method = requestLine[0]; // GET or HEAD
-        String resource = requestLine[1];
+    public void notImplemented(PrintWriter writer) {
+        String header = "HTTP/1.0 501 Not Implemented\n" + getServerTime() + "Server: Web_Server268\n"
+                + "Content-Type: text/html\n" + "Content-Length: 357\n" + "Connection: close\n\n";
+        String html = """
+                <?xml version="1.0" encoding="iso-8859-1"?>
+                <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+                        <head>
+                                <title>501 - Not Implemented</title>
+                        </head>
+                        <body>
+                                <h1>501 - Not Implemented</h1>
+                        </body>
+                </html>
+                """;
 
-        String file = findResource(directory, resource);
-
-        writer.println(buildHeaders(directory, resource));
-
-        if (file == null) {
-            writer.println(new String(Files.readAllBytes(Paths.get(error404))));
-            return;
-        }
-        if (Objects.equals(method, "GET")) {
-            writer.println(new String(Files.readAllBytes(Paths.get(directory + file))));
-        }
+        writer.println(header + html);
     }
 
     public void processRequest(String request, PrintWriter writer) throws IOException {
         String[] requestArray = request.split("\n");
         String[] requestLine = requestArray[0].split(" ");
+        String directory = "../p1-files/";
+
+        // Status Code 501 - Not Implemented
+        if (requestLine.length != 3) {
+            notImplemented(writer);
+            return;
+        }
+
         String method = requestLine[0];      // GET or HEAD
+        String path = requestLine[1];
+        String httpVersion = requestLine[2];
+        String file = findResource(directory, path);
 
         switch (method) {
-            case "GET", "HEAD" -> getAndHead(requestArray, writer);
-            default -> writer.println(new String(Files.readAllBytes(Paths.get(error400))));
+            case "GET" -> {
+                writer.println(buildHeaders(directory, path, file, httpVersion));
+                if (file == null) {
+                    if (Objects.equals(httpVersion, "HTTP/1.0")) {
+                        writer.println(new String(Files.readAllBytes(Paths.get(directory + "error404.html"))));
+                    } else {
+                        writer.println(new String(Files.readAllBytes(Paths.get(directory + "error400.html"))));
+                    }
+                } else {
+                    writer.println(new String(Files.readAllBytes(Paths.get(directory + file))));
+                }
+            }
+            case "HEAD" -> writer.println(buildHeaders(directory, path, file, httpVersion));
+            default -> notImplemented(writer); // Status Code 501 - Not Implemented
         }
     }
 
