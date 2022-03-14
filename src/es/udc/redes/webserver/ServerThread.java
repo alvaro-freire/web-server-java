@@ -91,12 +91,32 @@ public class ServerThread extends Thread {
         }
     }
 
-    public void badRequest(OutputStream writer) throws IOException {
+    public void badRequest(OutputStream writer, boolean get) throws IOException {
         String file = "p1-files" + File.separator + "error400.html";
 
         String header = "HTTP/1.0 400 Bad Request\n" + getServerTime() + "Server: Web_Server268\n"
                 + "Content-Type: text/html\n" + getContentLength(file) + "Connection: close\n\n";
-        String html = new String(Files.readAllBytes(Paths.get(file)));
+
+        String html = "";
+
+        if (get) {
+            html = new String(Files.readAllBytes(Paths.get(file)));
+        }
+
+        writer.write((header + html).getBytes());
+    }
+
+    public void notFound(OutputStream writer, boolean get) throws IOException {
+        String file = "p1-files" + File.separator + "error404.html";
+
+        String header = "HTTP/1.0 404 Not Found\n" + getServerTime() + "Server: Web_Server268\n"
+                + "Content-Type: text/html\n" + getContentLength(file) + "Connection: close\n\n";
+
+        String html = "";
+
+        if (get) {
+            html = new String(Files.readAllBytes(Paths.get(file)));
+        }
 
         writer.write((header + html).getBytes());
     }
@@ -107,7 +127,7 @@ public class ServerThread extends Thread {
         String directory = "p1-files" + File.separator;
 
         if (requestLine.length != 3) {
-            badRequest(writer);
+            badRequest(writer, true);
             return;
         }
 
@@ -119,21 +139,27 @@ public class ServerThread extends Thread {
         String httpVersion = requestLine[2];
         String file = findResource(directory, path);
 
+        if (!Objects.equals(httpVersion, "HTTP/1.0") && !Objects.equals(httpVersion, "HTTP/1.1")) {
+            badRequest(writer, true);
+        }
+
         switch (method) {
             case "GET" -> {
-                writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
                 if (file == null) {
-                    if (Objects.equals(httpVersion, "HTTP/1.0")) {
-                        writer.write(Files.readAllBytes(Paths.get(directory + "error404.html")));
-                    } else {
-                        writer.write(Files.readAllBytes(Paths.get(directory + "error400.html")));
-                    }
-                } else {
-                    writer.write(Files.readAllBytes(Paths.get(directory + file)));
+                    notFound(writer, true);
+                    return;
                 }
+                writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
+                writer.write(Files.readAllBytes(Paths.get(directory + file)));
             }
-            case "HEAD" -> writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
-            default -> badRequest(writer); // Status Code 501 - Not Implemented
+            case "HEAD" -> {
+                if (file == null) {
+                    notFound(writer, false);
+                    return;
+                }
+                writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
+            }
+            default -> badRequest(writer, true);
         }
     }
 
