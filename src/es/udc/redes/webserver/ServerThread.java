@@ -162,7 +162,7 @@ public class ServerThread extends Thread {
                     ZonedDateTime lastModifiedDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli
                             (new File(directory + file).lastModified()), ZoneId.systemDefault());
 
-                    if (iMSDate.isAfter(lastModifiedDate)) {
+                    if (iMSDate.isAfter(lastModifiedDate) || iMSDate.isEqual(lastModifiedDate)) {
                         error304(writer, httpVersion);
                         return;
                     }
@@ -170,7 +170,6 @@ public class ServerThread extends Thread {
                 writer.write((buildHeaders(directory, path, file, httpVersion)).getBytes());
                 if (method.equals("GET")) {
                     writer.write(Files.readAllBytes(Paths.get(directory + file)));
-                    writer.write("\n".getBytes());
                 }
             }
             default -> error(writer, true, 400);
