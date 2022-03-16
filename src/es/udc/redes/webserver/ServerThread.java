@@ -134,7 +134,6 @@ public class ServerThread extends Thread {
                 modifiedSince = true;
                 ifModifiedSince = line.split(" ", 2)[1];
                 iMSDate = ZonedDateTime.parse(ifModifiedSince, formatter);
-                System.out.println(iMSDate.format(formatter));
                 break;
             }
         }
