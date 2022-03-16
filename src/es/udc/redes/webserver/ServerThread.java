@@ -149,6 +149,7 @@ public class ServerThread extends Thread {
 
         if (!Objects.equals(httpVersion, "HTTP/1.0") && !Objects.equals(httpVersion, "HTTP/1.1")) {
             error(writer, method.equals("GET"), 400);
+            return;
         }
 
         switch (method) {
